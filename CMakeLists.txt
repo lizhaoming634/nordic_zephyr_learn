@@ -6,3 +6,10 @@ find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
 project(mycaf_sensor)
 
 target_sources(app PRIVATE src/main.c)
+
+# Add include directory for board specific CAF def files
+zephyr_include_directories(
+    ${CMAKE_CURRENT_SOURCE_DIR}/configuration  # 添加绝对路径
+)
+
+add_subdirectory(src/modules)
