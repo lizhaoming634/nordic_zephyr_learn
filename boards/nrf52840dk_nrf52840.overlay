@@ -3,27 +3,31 @@
  *
  * SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
  */
-
 / {
-    sensor_stub: sensor_stub {
-        compatible = "nordic,sensor-stub";
-        generator = "sensor_stub_gen";
-        status = "okay";
-    };
 
     agg0: agg0 {
         compatible = "caf,aggregator";
-        sensor_descr = "accel_sim_xyz";
+        sensor_descr = "bmi270_accel";
         buf_data_length = <240>;
         sample_size = <3>;
         status = "okay";
-        buf_count = <2>;
     };
+
+    agg1: agg1 {
+        compatible = "caf,aggregator";
+        sensor_descr = "bme280_env";
+        buf_data_length = <240>;
+        sample_size = <3>;
+        status = "okay";
+    };
+
 };
+
 
 &i2c0 {
     compatible = "nordic,nrf-twim";
     status = "okay";
+    zephyr,concat-buf-size = <257>; 
     bmi270: bmi270@69 {
         compatible = "bosch,bmi270";
         reg = <0x69>;
@@ -31,4 +35,41 @@
         label = "bmi270";
     };
 };
+
+&spi1 {
+    compatible = "nordic,nrf-spim";
+    status = "okay";
+    pinctrl-0 = <&spi1_default>;
+    pinctrl-1 = <&spi1_sleep>;
+    pinctrl-names = "default", "sleep";
+    cs-gpios = <&gpio0 30 GPIO_ACTIVE_LOW>;
+    bme280: bme280@0 {
+        compatible = "bosch,bme280";
+        reg = <0>;
+        spi-max-frequency = <1000000>;
+        label = "bme280";
+    };
+};
+
+/* STEP 2.2 - Change the pin configuration */
+&pinctrl {
+    spi1_default: spi1_default {
+        group1 {
+            psels = <NRF_PSEL(SPIM_SCK, 0, 28)>,
+                    <NRF_PSEL(SPIM_MOSI, 0, 29)>,
+                    <NRF_PSEL(SPIM_MISO, 0, 31)>;
+        };
+    };
+
+    spi1_sleep: spi1_sleep {
+        group1 {
+            psels = <NRF_PSEL(SPIM_SCK, 0, 28)>,
+                    <NRF_PSEL(SPIM_MOSI, 0, 29)>,
+                    <NRF_PSEL(SPIM_MISO, 0, 31)>;
+            low-power-enable;
+        };
+    };
+};
+
+
 
