@@ -11,6 +11,7 @@
 #include <caf/events/module_state_event.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/drivers/sensor.h>
+#include <zephyr/display/cfb.h>
 
 LOG_MODULE_REGISTER(MODULE);
 
@@ -75,9 +76,27 @@ static void bmi270_init(void)
     printk("Found device \%s\", getting sensor data...\n", dev->name);
 }
 
+static void display_init(void)
+{
+	const struct device *display = DEVICE_DT_GET(DT_NODELABEL(ssd1306));
+	if (!device_is_ready(display)) {
+		LOG_ERR("Display not ready");
+		return;
+	}
+	if (cfb_framebuffer_init(display)) {
+		LOG_ERR("Framebuffer initialization failed!");
+		return;
+	}
+	cfb_framebuffer_clear(display, true);
+	display_blanking_off(display);
+		cfb_set_kerning(display, 0);
+	cfb_framebuffer_set_font(display, 8);
+}
 int main(void)
 {
 	int ret;
+	display_init();
+
 	bmi270_init();
 	ret = app_event_manager_init();
 	if (ret) {

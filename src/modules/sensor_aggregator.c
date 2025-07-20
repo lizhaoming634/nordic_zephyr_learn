@@ -6,6 +6,7 @@
 
 #include <stdlib.h>
 #include <caf/events/sensor_data_aggregator_event.h>
+#include <zephyr/display/cfb.h>
 
 #define MODULE sensor_aggregator
 #include <caf/events/module_state_event.h>
@@ -38,10 +39,47 @@ static struct workload workloads[NUMBER_OF_WORKLOADS];
 static void simulated_work_handler(struct k_work *work)
 {
     struct workload *workload = CONTAINER_OF(work, struct workload, work);
+    const struct device *display = DEVICE_DT_GET(DT_NODELABEL(ssd1306));
+
+
+
+    // 假设 bmi270_accel 和 bme280_env 分别对应不同的 workload->sensor_descr
+    static char line1[40];
+    static char line2[40];
+
+    if (strcmp(workload->sensor_descr, "bmi270_accel") == 0) {
+        snprintf(line1, sizeof(line1), "x:%dy:%dz:%d ",
+            workload->samples[0].val1, 
+            workload->samples[1].val1, 
+            workload->samples[2].val1);
+    } else if (strcmp(workload->sensor_descr, "bme280_env") == 0) {
+        snprintf(line2, sizeof(line2), "T:%dH:%dP:%d",
+            workload->samples[0].val1,
+            workload->samples[1].val1,
+            workload->samples[2].val1);
+    }
+
+    // 立即刷新显示
+    cfb_framebuffer_clear(display, true);
+    cfb_print(display, line1, 0, 0);      // 第一行
+    cfb_print(display, line2, 0, 16);     // 第二行，y=16可根据字体高度调整
+    cfb_framebuffer_finalize(display);
 
     // 打印传感器描述符
     LOG_INF("Sensor: %s\n", workload->sensor_descr);
 
+	if (!device_is_ready(display)) {
+        LOG_ERR("Display not ready");
+        return;
+    }
+
+	if (strcmp(workload->sensor_descr, "bme280_env") == 0) {
+        snprintf(line2, sizeof(line2), "T:%dH:%dP:%d",
+            workload->samples[0].val1,
+            workload->samples[1].val1,
+            workload->samples[2].val1);
+    }
+	
     // 打印聚合后的传感器数据
     for (uint8_t i = 0; i < workload->sample_cnt; i++) {
         LOG_INF("  Sample %d: ", i);

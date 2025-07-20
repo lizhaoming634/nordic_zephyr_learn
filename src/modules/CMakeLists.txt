@@ -8,6 +8,5 @@ target_include_directories(app PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
 
 target_sources(app PRIVATE 
-    sensor_print.c
     sensor_aggregator.c
 )

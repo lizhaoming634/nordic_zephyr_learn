@@ -38,7 +38,7 @@ static const struct sm_sensor_config sensor_configs[] = {
         .dev = DEVICE_DT_GET(DT_NODELABEL(bmi270)),
         .chans = bmi270_chan,
         .chan_cnt = ARRAY_SIZE(bmi270_chan),
-        .sampling_period_ms = 2000,
+        .sampling_period_ms = 200,
         .active_events_limit = 3,
         .event_descr = "bmi270_accel",
     },
@@ -46,7 +46,7 @@ static const struct sm_sensor_config sensor_configs[] = {
         .dev = DEVICE_DT_GET(DT_NODELABEL(bme280)),
         .chans = bme280_chans,
         .chan_cnt = ARRAY_SIZE(bme280_chans),
-        .sampling_period_ms = 2000,
+        .sampling_period_ms = 1000,
         .active_events_limit = 3,
         .event_descr = "bme280_env",
     }
