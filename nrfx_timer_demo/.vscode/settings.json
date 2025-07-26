@@ -1,6 +1,6 @@
 {
     "files.associations": {
         "log.h": "c",
-        "cfb.h": "c"
+        "nrfx_timer.h": "c"
     }
 }
