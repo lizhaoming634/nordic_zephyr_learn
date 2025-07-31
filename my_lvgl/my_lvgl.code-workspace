@@ -1,0 +1,22 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "../../../v3.0.2"
+		}
+	],
+	"settings": {
+		"files.associations": {
+			"kernel.h": "c",
+			"lvgl_mem.h": "c",
+			"lvgl.h": "c",
+			"mem_stats.h": "c",
+			"string.h": "c",
+			"stdio.h": "c",
+			"lv_conf.h": "c",
+			"lv_conf_internal.h": "c"
+		}
+	}
+}
