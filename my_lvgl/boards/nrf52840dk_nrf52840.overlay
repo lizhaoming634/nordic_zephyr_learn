@@ -11,11 +11,22 @@
     };
     aliases {
         input = &cst816s;
+        backlight = &backlight_pwm;   /* 让代码用 DT_ALIAS(bl) 找到背光 */
     };
+
+    pwmleds {
+        compatible = "pwm-leds";
+        backlight_pwm: backlight {
+            /* 例：pwm0 通道 0，周期 100k ns=10kHz，正逻辑 */
+            pwms = <&pwm0 0 100000 PWM_POLARITY_NORMAL>;
+            label = "display_backlight";
+        };
+    };
+
     mipi_dbi {
         compatible = "zephyr,mipi-dbi-spi";
-        dc-gpios = <&gpio0 31 GPIO_ACTIVE_HIGH>;
-        reset-gpios = <&gpio0 28 GPIO_ACTIVE_LOW>;
+        dc-gpios = <&gpio0 29 GPIO_ACTIVE_HIGH>;   /* D/CX */
+        reset-gpios = <&gpio0 30 GPIO_ACTIVE_LOW>; /* RSTX */
         spi-dev = <&spi3>;
         #address-cells = <1>;
         #size-cells = <0>;
@@ -23,31 +34,50 @@
         st7789v: st7789v@0 {
             compatible = "sitronix,st7789v";
             reg = <0>;
+
             mipi-max-frequency = <32000000>;
             mipi-mode = "MIPI_DBI_MODE_SPI_4WIRE";
+
+            /* 240x280 面板，竖屏可视区上方常见偏移 20 */
             width = <240>;
             height = <280>;
             x-offset = <0>;
             y-offset = <20>;
-            vcom = <0x3B>;
-            gctrl = <0x75>;
-            vrhs = <0x16>;
-            vdvs = <0x20>;
+
+            /* —— 以下寄存器完全按厂家初始化 ——
+             * MADCTL(36h)=0x00；COLMOD(3Ah)=0x05(16bpp)
+             */
             mdac = <0x00>;
-            gamma = <0x01>;
-            colmod = <0x55>;
+            colmod = <0x05>;
+
+            /* PORCTRL(B2h) */
+            porch-param = [ 0b 0b 00 33 35  ];
+
+            /* GCTRL(B7h)、VCOMS(BBh)、LCMCTRL(C0h) */
+            gctrl = <0x11>;
+            vcom = <0x35>;
             lcm = <0x2c>;
-            porch-param = [ 0c 0c 00 33 33  ];
-            cmd2en-param = [ 5a 69 02 01  ];
+
+            /* VRHS(C3h)、VDVS(C4h) */
+            vrhs = <0x0D>;
+            vdvs = <0x20>;
+
+            /* PWCTRL1(D0h) */
             pwctrl1-param = [ a4 a1  ];
-            pvgam-param = [ F0 0B 11 0E 0D 19 36 33 4B 07 14 14 2C 2E  ];
-            nvgam-param = [ F0 0D 12 0B 09 03 32 44 48 39 16 16 2d 30  ];
+
+            /* Gamma 表（E0/E1） */
+            pvgam-param = [ F0 06 0B 0A 09 26 29 33 41 18 16 15 29 2D  ];
+            nvgam-param = [ F0 04 08 08 07 03 28 32 40 3B 19 18 2A 2E  ];
+
+            /* 绑定里 gamma 是必填项（GAMSET 0x26）；取常用 0x01 */
+            gamma = <0x01>;
+
+            cmd2en-param = [ 5a 69 02 01  ];
             ram-param = [ 00 f8  ];
             rgb-param = [ 00 08 14  ];
+
         };
     };
-
-
 };
 
 &i2c0 {
@@ -60,17 +90,43 @@
     cst816s: cst816s@15 {
         compatible = "hynitron,cst816s";
         reg = <0x15>;
-        irq-gpios = <&gpio1 0 GPIO_ACTIVE_LOW>;
-        rst-gpios = <&gpio0 20 GPIO_ACTIVE_LOW>;
+        irq-gpios = <&gpio1 15 GPIO_ACTIVE_LOW>;
+        rst-gpios = <&gpio0 2 GPIO_ACTIVE_LOW>;
     };
 };
+
+&i2c1 {
+    compatible = "nordic,nrf-twim";
+    status = "okay";
+    zephyr,concat-buf-size = <257>;
+
+    clock-frequency = <I2C_BITRATE_STANDARD>;
+    pinctrl-0 = <&i2c1_default>;
+    pinctrl-1 = <&i2c1_sleep>;
+    pinctrl-names = "default", "sleep";
+    bmi270: bmi270@69 {
+        compatible = "bosch,bmi270";
+        reg = <0x69>;
+        label = "bmi270";
+        status = "okay";
+        irq-gpios = <&gpio1 12 GPIO_ACTIVE_HIGH>;
+    };
+};
+
 
 &spi3 {
     status = "okay";
     pinctrl-0 = <&spi3_default>;
     pinctrl-1 = <&spi3_sleep>;
     pinctrl-names = "default", "sleep";
-    cs-gpios = <&gpio0 30 GPIO_ACTIVE_LOW>;
+    cs-gpios = <&gpio0 28 GPIO_ACTIVE_LOW>;
+};
+
+&pwm0 {
+    status = "okay";
+    pinctrl-0 = <&pwm0_default>;
+    pinctrl-1 = <&pwm0_sleep>;
+    pinctrl-names = "default", "sleep";
 };
 
 &pinctrl {
@@ -88,14 +144,44 @@
             low-power-enable;
         };
     };
+    i2c1_default: i2c1_default {
+        group1 {
+            psels = <NRF_PSEL(TWIM_SCL, 1, 13)>,
+                    <NRF_PSEL(TWIM_SDA, 1, 14)>;
+            bias-pull-up;
+        };
+    };
+    i2c1_sleep: i2c1_sleep {
+        group1 {
+            psels = <NRF_PSEL(TWIM_SCL, 0, 13)>,
+                    <NRF_PSEL(TWIM_SDA, 0, 14)>;
+            low-power-enable;
+        };
+    };
+
     spi3_default: spi3_default {
         group1 {
-            psels = <NRF_PSEL(SPIM_SCK, 0, 3)>, <NRF_PSEL(SPIM_MOSI, 0, 4)>;
+            psels = <NRF_PSEL(SPIM_SCK, 0, 4)>, <NRF_PSEL(SPIM_MOSI, 0, 3)>;
+            nordic,drive-mode = <NRF_DRIVE_H0H1>;
         };
     };
     spi3_sleep: spi3_sleep {
         group1 {
-            psels = <NRF_PSEL(SPIM_SCK, 0, 3)>, <NRF_PSEL(SPIM_MOSI, 0, 4)>;
+            psels = <NRF_PSEL(SPIM_SCK, 0, 4)>, <NRF_PSEL(SPIM_MOSI, 0, 3)>;
+            low-power-enable;
+        };
+    };
+
+    pwm0_default: pwm0_default {
+        group1 {
+            psels = <NRF_PSEL(PWM_OUT0, 0, 31)>;
+            nordic,drive-mode = <NRF_DRIVE_H0H1>;
+        };
+    };
+
+    pwm0_sleep: pwm0_sleep {
+        group1 {
+            psels = <NRF_PSEL(PWM_OUT0, 0, 31)>;
             low-power-enable;
         };
     };
@@ -120,6 +206,5 @@
     status = "disabled";
 };
 
-&pwm0 {
-    status = "disabled";
-};
+
+

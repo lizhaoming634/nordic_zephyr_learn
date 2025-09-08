@@ -5,6 +5,7 @@ cmake_minimum_required(VERSION 3.20.0)
 find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
 project(my_lvgl)
 
+
 set(LVGL_DIR ${ZEPHYR_LVGL_MODULE_DIR})
 
 target_sources(app PRIVATE src/main.c)
@@ -38,3 +39,14 @@ target_sources_ifdef(CONFIG_LV_BUILD_EXAMPLES app PRIVATE
     ${LVGL_DIR}/examples/widgets/arc/lv_example_arc_2.c
 
 )
+
+# 先加入第三方 Bosch 库（提供实现与公共包含路径）
+add_subdirectory(src/third_party/bosch_bmi270)
+
+add_subdirectory(src/ui)
+add_subdirectory(src/ble)
+add_subdirectory(src/sensor)
+add_subdirectory(src/app)
+
+
+include_directories(src/)
